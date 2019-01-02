@@ -333,6 +333,50 @@ Use the example above to write a function to retrieve all of the results (up to 
 
 ```python
 #Your code here
+def retrieve_results(term, location, api_key, offset=0):
+    #term = 'Mexican'
+    #location = 'Astoria NY'
+    #SEARCH_LIMIT = 10 
+
+    url = 'https://api.yelp.com/v3/businesses/search'
+
+    headers =  {
+            'Authorization': 'Bearer {}'.format(api_key),
+        }
+    
+    url_params = {
+                    'term': term.replace(' ', '+'),
+                    'location': location.replace(' ', '+'),
+                    'offset': offset
+
+                }
+    response = requests.get(url, headers=headers, params=url_params)
+    
+    return response
+    
+
+def batch_retrieve(term, location, api_key):
+    dfs = []
+    results_count = 0
+    
+    #First Request
+    response = retrieve_results(term, location, api_key)
+    
+    #Retrieve Total Matches
+    total = response.json()['total']
+    results_count += len()
+    
+    temp_df = pd.DataFrame.from_dict(response.json()['businesses'])
+    dfs.append(temp_df)
+    
+    while results_count < total:
+        response = retrieve_results(term, location, api_key, offset=results_count)
+        temp_df = pd.DataFrame.from_dict(response.json()['businesses'])
+        dfs.append(temp_df)
+    
+    df = pd.concat(dfs, ignore_index=True)
+    
+    return df
 ```
 
 
@@ -367,4 +411,29 @@ Look at the initial Yelp example and try and make a map using Folium of the rest
 
 ```python
 #Your code here
+#Retrieve the Latitude and Longitude from the Yelp Response
+term = #Your term here
+location = #Your location here
+key = #Your yelp api key here
+
+lat_long = retrieve_results(term, location, key)['region']['center']
+lat = lat_long['latitude']
+long = lat_long['longitude']
+
+#Create a map of the area
+yelp_map = folium.Map([lat, long])
+
+df = batch_retrieve(term, location, key)
+
+for row in df.index:
+    lat_long = df['coordinates'][row]
+    lat = lat_long['latitude']
+    long = lat_long['longitude']
+    name = df['name'][row]
+    rating = df['rating'][row]
+    price = df['price'][row]
+    details = '{} Price: {} Rating:{}'.format(name,price,rating)
+    marker = folium.Marker([lat, long])
+    marker.add_to(yelp_map)
+yelp_map
 ```
